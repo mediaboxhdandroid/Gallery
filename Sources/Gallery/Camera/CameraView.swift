@@ -65,9 +65,11 @@ class CameraView: UIView, UIGestureRecognizerDelegate {
     insertSubview(rotateOverlayView, belowSubview: rotateButton)
     insertSubview(focusImageView, belowSubview: bottomContainer)
     insertSubview(shutterOverlayView, belowSubview: bottomContainer)
-    insertSubview(imgOverlay, at: 0)
-    imgOverlay.frame = self.frame
-    imgOverlay.autoresizingMask = [.flexibleHeight, .flexibleWidth]
+    if let enableDateTime = UserDefaults.standard.string(forKey: "enableDateTime"), enableDateTime == "on" {
+        insertSubview(imgOverlay, at: 0)
+        imgOverlay.frame = self.frame
+        imgOverlay.autoresizingMask = [.flexibleHeight, .flexibleWidth]
+    }
 
     closeButton.g_pin(on: .left)
     closeButton.g_pin(size: CGSize(width: 44, height: 44))
@@ -121,15 +123,16 @@ class CameraView: UIView, UIGestureRecognizerDelegate {
     self.layer.insertSublayer(layer, at: 0)
     layer.frame = self.layer.bounds
     
-    let date = Date()
-    let dateFormatter = DateFormatter()
-    dateFormatter.timeStyle = DateFormatter.Style.short //Set time style
-    dateFormatter.dateStyle = DateFormatter.Style.short //Set date style
-    dateFormatter.timeZone = TimeZone.current
-    dateFormatter.locale = Locale(identifier: "vi")
-    let text = dateFormatter.string(from: date)
-    imgOverlay.image = Utils.textToImage(drawText: text as NSString, inImage: nil, targetSize: imgOverlay.bounds.size)
-
+    if let enableDateTime = UserDefaults.standard.string(forKey: "enableDateTime"), enableDateTime == "on" {
+        let date = Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeStyle = DateFormatter.Style.short //Set time style
+        dateFormatter.dateStyle = DateFormatter.Style.short //Set date style
+        dateFormatter.timeZone = TimeZone.current
+        dateFormatter.locale = Locale(identifier: "vi")
+        let text = dateFormatter.string(from: date)
+        imgOverlay.image = Utils.textToImage(drawText: text as NSString, inImage: nil, targetSize: imgOverlay.bounds.size)
+    }
     previewLayer = layer
   }
 
