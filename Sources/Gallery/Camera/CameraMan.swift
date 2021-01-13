@@ -130,28 +130,36 @@ class CameraMan {
   func takePhoto(_ previewLayer: AVCaptureVideoPreviewLayer, location: CLLocation?, completion: @escaping ((PHAsset?) -> Void)) {
     guard let connection = stillImageOutput?.connection(with: .video) else { return }
 
-    // It should be set the image orientation with the device current orientation
-    connection.videoOrientation = self.orientationMan.videoOrientation()
+    connection.videoOrientation = Utils.videoOrientation()
 
     queue.async {
       self.stillImageOutput?.captureStillImageAsynchronously(from: connection) {
         buffer, error in
 
+        let date = Date()
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeStyle = DateFormatter.Style.short //Set time style
+        dateFormatter.dateStyle = DateFormatter.Style.short //Set date style
+        dateFormatter.timeZone = TimeZone.current
+        dateFormatter.locale = Locale(identifier: "vi")
+        let text = dateFormatter.string(from: date)
+
         guard error == nil, let buffer = buffer, CMSampleBufferIsValid(buffer),
           let imageData = AVCaptureStillImageOutput.jpegStillImageNSDataRepresentation(buffer),
-          let image = UIImage(data: imageData)
+          let tmpimage = UIImage(data: imageData)
           else {
             DispatchQueue.main.async {
               completion(nil)
             }
             return
         }
-
-        self.savePhoto(image, location: location, completion: completion)
+        if let image = Utils.textToImage(drawText: text as NSString, inImage: tmpimage, targetSize: CGSize.zero) {
+            self.savePhoto(image, location: location, completion: completion)
+        }
       }
     }
   }
-
+  
   func savePhoto(_ image: UIImage, location: CLLocation?, completion: @escaping ((PHAsset?) -> Void)) {
     var localIdentifier: String?
 
