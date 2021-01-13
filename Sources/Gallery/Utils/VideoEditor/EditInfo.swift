@@ -111,12 +111,20 @@ struct EditInfo {
       AVVideoProfileLevelKey: AVVideoProfileLevelH264High40
     ]
 
-    return [
-      AVVideoCodecKey: AVVideoCodecType.h264 as AnyObject,
-      AVVideoWidthKey: NSNumber(value: 1920 as Int),
-      AVVideoHeightKey: NSNumber(value: 1080 as Int),
-      AVVideoCompressionPropertiesKey: compression as AnyObject
-    ]
+    if #available(iOS 11.0, *) {
+        return [
+            AVVideoCodecKey: AVVideoCodecType.h264 as AnyObject,
+            AVVideoWidthKey: NSNumber(value: 1920 as Int),
+            AVVideoHeightKey: NSNumber(value: 1080 as Int),
+            AVVideoCompressionPropertiesKey: compression as AnyObject
+        ]
+    } else {
+        return [
+            AVVideoWidthKey: NSNumber(value: 1920 as Int),
+            AVVideoHeightKey: NSNumber(value: 1080 as Int),
+            AVVideoCompressionPropertiesKey: compression as AnyObject
+        ]
+    }
   }
 }
 
