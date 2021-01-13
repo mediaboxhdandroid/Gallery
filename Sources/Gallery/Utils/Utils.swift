@@ -61,7 +61,7 @@ struct Utils {
         UIGraphicsEndImageContext()
         return image
     }
-
+  
     static func textToImage(drawText: NSString, inImage: UIImage? = nil, targetSize: CGSize? = CGSize.zero) -> UIImage? {
 
         if inImage == nil && targetSize == CGSize.zero {
@@ -81,10 +81,10 @@ struct Utils {
         let imageSize = img.size
         let scale: CGFloat = 0
         UIGraphicsBeginImageContextWithOptions(imageSize, false, scale)
-
+        let minsize = min(imageSize.width, imageSize.height) / 2
         // Setup the font specific variables
-        var textColor = UIColor(red: 230/255, green: 50/255, blue: 70/255, alpha: 1)
-        var textFont = UIFont(name: "Helvetica Bold", size: (imageSize.width / 2) * 0.08)!
+        var textColor = UIColor(red: 250/255, green: 70/255, blue: 90/255, alpha: 1)
+        var textFont = UIFont(name: "Helvetica Bold", size: minsize * 0.1)!
 
         // Setup the font attributes that will be later used to dictate how the text should be drawn
         let textFontAttributes = [
@@ -96,7 +96,7 @@ struct Utils {
         img.draw(in: CGRect.init(x: 0, y: 0, width: imageSize.width, height: imageSize.height))
 
         // Create a point within the space that is as bit as the image
-        let rect = CGRect.init(x: (imageSize.width / 2) * 0.08, y: (imageSize.width / 2) * 0.08, width: (imageSize.width / 2), height: (imageSize.width / 2) * 0.08)
+        let rect = CGRect.init(x: minsize * 0.08, y: minsize * 0.08, width: minsize, height: minsize * 0.1)
 
         // Draw the text into an image
         drawText.draw(in: rect, withAttributes: textFontAttributes)
