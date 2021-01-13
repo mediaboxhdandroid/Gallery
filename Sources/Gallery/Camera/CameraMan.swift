@@ -136,14 +136,6 @@ class CameraMan {
       self.stillImageOutput?.captureStillImageAsynchronously(from: connection) {
         buffer, error in
 
-        let date = Date()
-        let dateFormatter = DateFormatter()
-        dateFormatter.timeStyle = DateFormatter.Style.short //Set time style
-        dateFormatter.dateStyle = DateFormatter.Style.short //Set date style
-        dateFormatter.timeZone = TimeZone.current
-        dateFormatter.locale = Locale(identifier: "vi")
-        let text = dateFormatter.string(from: date)
-
         guard error == nil, let buffer = buffer, CMSampleBufferIsValid(buffer),
           let imageData = AVCaptureStillImageOutput.jpegStillImageNSDataRepresentation(buffer),
           let tmpimage = UIImage(data: imageData)
@@ -153,8 +145,19 @@ class CameraMan {
             }
             return
         }
-        if let image = Utils.textToImage(drawText: text as NSString, inImage: tmpimage, targetSize: CGSize.zero) {
-            self.savePhoto(image, location: location, completion: completion)
+        if let enableDateTime = UserDefaults.standard.string(forKey: "enableDateTime"), enableDateTime == "on" {
+            let date = Date()
+            let dateFormatter = DateFormatter()
+            dateFormatter.timeStyle = DateFormatter.Style.short //Set time style
+            dateFormatter.dateStyle = DateFormatter.Style.short //Set date style
+            dateFormatter.timeZone = TimeZone.current
+            dateFormatter.locale = Locale(identifier: "vi")
+            let text = dateFormatter.string(from: date)
+            if let image = Utils.textToImage(drawText: text as NSString, inImage: tmpimage, targetSize: CGSize.zero) {
+                self.savePhoto(image, location: location, completion: completion)
+            }
+        } else {
+            self.savePhoto(tmpimage, location: location, completion: completion)
         }
       }
     }
