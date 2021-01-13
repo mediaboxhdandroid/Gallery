@@ -116,14 +116,14 @@ class CameraController: UIViewController {
       }) 
     })
 
-    self.cameraView.stackView.startLoading()
+    self.cameraView.shutterButton.startLoading()
     cameraMan.takePhoto(previewLayer, location: locationManager?.latestLocation) { [weak self] asset in
       guard let strongSelf = self else {
         return
       }
 
       button.isEnabled = true
-      strongSelf.cameraView.stackView.stopLoading()
+      strongSelf.cameraView.shutterButton.stopLoading()
 
       if let asset = asset {
         strongSelf.cart.add(Image(asset: asset), newlyTaken: true)
