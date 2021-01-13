@@ -1,7 +1,8 @@
 import UIKit
 
 class ShutterButton: UIButton {
-
+    
+    lazy var indicator: UIActivityIndicatorView = self.makeIndicator()
   lazy var overlayView: UIView = self.makeOverlayView()
   lazy var roundLayer: CAShapeLayer = self.makeRoundLayer()
 
@@ -33,12 +34,28 @@ class ShutterButton: UIButton {
 
   func setup() {
     backgroundColor = UIColor.white
+    [overlayView, indicator].forEach {
+      self.addSubview($0)
+    }
 
-    addSubview(overlayView)
     layer.addSublayer(roundLayer)
   }
 
   // MARK: - Controls
+
+    func startLoading() {
+        indicator.center = CGPoint.init(x: self.bounds.midX, y: self.bounds.midY)
+        self.bringSubviewToFront(indicator)
+      indicator.startAnimating()
+      UIView.animate(withDuration: 0.3, animations: {
+        self.indicator.alpha = 1.0
+      })
+    }
+
+    func stopLoading() {
+      indicator.stopAnimating()
+      indicator.alpha = 0
+    }
 
   func makeOverlayView() -> UIView {
     let view = UIView()
@@ -47,6 +64,14 @@ class ShutterButton: UIButton {
 
     return view
   }
+
+    func makeIndicator() -> UIActivityIndicatorView {
+      let indicator = UIActivityIndicatorView()
+      indicator.alpha = 0
+        indicator.style = .gray
+
+      return indicator
+    }
 
   func makeRoundLayer() -> CAShapeLayer {
     let layer = CAShapeLayer()
