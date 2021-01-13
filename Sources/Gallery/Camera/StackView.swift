@@ -3,7 +3,6 @@ import Photos
 
 class StackView: UIControl{
 
-  lazy var indicator: UIActivityIndicatorView = self.makeIndicator()
   lazy var imageViews: [UIImageView] = self.makeImageViews()
   lazy var countLabel: UILabel = self.makeCountLabel()
   lazy var tapGR: UITapGestureRecognizer = self.makeTapGR()
@@ -27,10 +26,7 @@ class StackView: UIControl{
     imageViews.forEach {
       addSubview($0)
     }
-
-    [countLabel, indicator].forEach {
-      self.addSubview($0)
-    }
+    addSubview(countLabel)
   }
 
   // MARK: - Layout
@@ -57,24 +53,6 @@ class StackView: UIControl{
   }
 
   // MARK: - Logic
-
-  func startLoading() {
-    if let topVisibleView = imageViews.filter({ $0.alpha == 1.0 }).last {
-      indicator.center = topVisibleView.center
-    } else if let first = imageViews.first {
-      indicator.center = first.center
-    }
-
-    indicator.startAnimating()
-    UIView.animate(withDuration: 0.3, animations: {
-      self.indicator.alpha = 1.0
-    }) 
-  }
-
-  func stopLoading() {
-    indicator.stopAnimating()
-    indicator.alpha = 0
-  }
 
   func renderViews(_ assets: [PHAsset]) {
     let photos = Array(assets.suffix(Config.Camera.StackView.imageCount))
@@ -132,13 +110,6 @@ class StackView: UIControl{
   }
   
   // MARK: - Controls
-
-  func makeIndicator() -> UIActivityIndicatorView {
-    let indicator = UIActivityIndicatorView()
-    indicator.alpha = 0
-
-    return indicator
-  }
 
   func makeImageViews() -> [UIImageView] {
     return Array(0..<Config.Camera.StackView.imageCount).map { _ in
