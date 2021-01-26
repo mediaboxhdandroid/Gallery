@@ -62,6 +62,20 @@ struct Utils {
         return image
     }
   
+    static func textFontAttributes(_ width: CGFloat) -> [NSAttributedString.Key: Any] {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        let textFontAttributes = [
+            NSAttributedString.Key.font: UIFont(name: "Helvetica", size: width * 0.05),
+            NSAttributedString.Key.foregroundColor: UIColor.white,
+            NSAttributedString.Key.backgroundColor: UIColor.clear,
+            NSAttributedString.Key.strokeWidth: -1,
+            NSAttributedString.Key.strokeColor: UIColor.black,
+            NSAttributedString.Key.paragraphStyle: paragraphStyle
+        ] as [NSAttributedString.Key : Any]
+        return textFontAttributes
+    }
+    
     static func textToImage(drawText: NSString, inImage: UIImage? = nil, targetSize: CGSize? = CGSize.zero) -> UIImage? {
 
         if inImage == nil && targetSize == CGSize.zero {
@@ -81,25 +95,15 @@ struct Utils {
         let imageSize = img.size
         let scale: CGFloat = 0
         UIGraphicsBeginImageContextWithOptions(imageSize, false, scale)
-        let minsize = min(imageSize.width, imageSize.height) / 2
-        // Setup the font specific variables
-        var textColor = UIColor(red: 250/255, green: 70/255, blue: 90/255, alpha: 1)
-        var textFont = UIFont(name: "Helvetica Bold", size: minsize * 0.1)!
-
-        // Setup the font attributes that will be later used to dictate how the text should be drawn
-        let textFontAttributes = [
-            NSAttributedString.Key.font: textFont,
-            NSAttributedString.Key.foregroundColor: textColor,
-        ]
 
         // Put the image into a rectangle as large as the original image
         img.draw(in: CGRect.init(x: 0, y: 0, width: imageSize.width, height: imageSize.height))
 
         // Create a point within the space that is as bit as the image
-        let rect = CGRect.init(x: minsize * 0.08, y: minsize * 0.08, width: minsize, height: minsize * 0.1)
+        let rect = CGRect.init(x: 0, y: 0, width: imageSize.width * 0.7, height: imageSize.width * 0.3)
 
         // Draw the text into an image
-        drawText.draw(in: rect, withAttributes: textFontAttributes)
+        drawText.draw(in: rect, withAttributes: Utils.textFontAttributes(imageSize.width))
 
         // Create a new image out of the images we have created
         var newImage = UIGraphicsGetImageFromCurrentImageContext()
