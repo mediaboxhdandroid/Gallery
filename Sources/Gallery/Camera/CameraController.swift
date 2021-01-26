@@ -1,5 +1,6 @@
 import UIKit
 import AVFoundation
+import CoreLocation
 
 class CameraController: UIViewController {
 
@@ -69,9 +70,13 @@ class CameraController: UIViewController {
 
   func setupLocation() {
     if Config.Camera.recordLocation {
-      locationManager = LocationManager()
+        locationManager = LocationManager.init(self)
     }
   }
+    
+    func didUpdateLocation(_ location: CLLocation) {
+        self.cameraView.updateLocation(location)
+    }
 
   // MARK: - Action
 
