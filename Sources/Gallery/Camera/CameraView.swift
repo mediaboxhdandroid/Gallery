@@ -1,5 +1,7 @@
 import UIKit
 import AVFoundation
+import CoreLocation
+import MapKit
 
 protocol CameraViewDelegate: class {
   func cameraView(_ cameraView: CameraView, didTouch point: CGPoint)
@@ -20,9 +22,14 @@ class CameraView: UIView, UIGestureRecognizerDelegate {
   lazy var rotateOverlayView: UIView = self.makeRotateOverlayView()
   lazy var shutterOverlayView: UIView = self.makeShutterOverlayView()
   lazy var blurView: UIVisualEffectView = self.makeBlurView()
-      var imgOverlay: UIImageView = UIImageView()
-
-
+      
+    var imgOverlay: UIImageView = UIImageView()
+    var infOverlay: UIView = UIView()
+    var labelOverlay: UILabel = UILabel()
+    var pinImage = MKPinAnnotationView(annotation: nil, reuseIdentifier: nil).image ?? UIImage()
+    var preGeocoder : CLGeocoder?
+    var preMapSnapshotter : MKMapSnapshotter?
+    
   var timer: Timer?
   var previewLayer: AVCaptureVideoPreviewLayer?
   weak var delegate: CameraViewDelegate?
@@ -45,6 +52,33 @@ class CameraView: UIView, UIGestureRecognizerDelegate {
   func setup() {
     addGestureRecognizer(tapGR)
 
+    if let enableDateTime = UserDefaults.standard.string(forKey: "enableDateTime"), enableDateTime == "on" {
+        insertSubview(infOverlay, at: 0)
+        infOverlay.frame = self.frame
+        infOverlay.autoresizingMask = [.flexibleHeight, .flexibleWidth]
+        infOverlay.backgroundColor = .clear
+        
+        infOverlay.addSubview(imgOverlay)
+        imgOverlay.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            imgOverlay.topAnchor.constraint(equalTo: infOverlay.topAnchor),
+            imgOverlay.trailingAnchor.constraint(equalTo: infOverlay.trailingAnchor),
+            imgOverlay.widthAnchor.constraint(equalTo: infOverlay.widthAnchor, multiplier: 1/3),
+            imgOverlay.heightAnchor.constraint(equalTo: infOverlay.widthAnchor, multiplier: 1/3),
+        ])
+        imgOverlay.alpha = 0.65
+        
+        infOverlay.addSubview(labelOverlay)
+        labelOverlay.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            labelOverlay.topAnchor.constraint(equalTo: infOverlay.topAnchor),
+            labelOverlay.leadingAnchor.constraint(equalTo: infOverlay.leadingAnchor),
+            labelOverlay.widthAnchor.constraint(equalTo: infOverlay.widthAnchor, multiplier: 0.7),
+        ])
+        labelOverlay.numberOfLines = 0
+        labelOverlay.textAlignment = .left
+    }
+
     [closeButton, flashButton, rotateButton, bottomContainer].forEach {
       addSubview($0)
     }
@@ -65,11 +99,6 @@ class CameraView: UIView, UIGestureRecognizerDelegate {
     insertSubview(rotateOverlayView, belowSubview: rotateButton)
     insertSubview(focusImageView, belowSubview: bottomContainer)
     insertSubview(shutterOverlayView, belowSubview: bottomContainer)
-    if let enableDateTime = UserDefaults.standard.string(forKey: "enableDateTime"), enableDateTime == "on" {
-        insertSubview(imgOverlay, at: 0)
-        imgOverlay.frame = self.frame
-        imgOverlay.autoresizingMask = [.flexibleHeight, .flexibleWidth]
-    }
 
     closeButton.g_pin(on: .left)
     closeButton.g_pin(size: CGSize(width: 44, height: 44))
@@ -112,6 +141,72 @@ class CameraView: UIView, UIGestureRecognizerDelegate {
     shutterOverlayView.g_pinEdges()
   }
 
+    func updateLocation(_ location : CLLocation?) {
+        if let enableDateTime = UserDefaults.standard.string(forKey: "enableDateTime"), enableDateTime == "on" {
+            let date = Date()
+            let dateFormatter = DateFormatter()
+            dateFormatter.timeStyle = DateFormatter.Style.short //Set time style
+            dateFormatter.dateStyle = DateFormatter.Style.short //Set date style
+            dateFormatter.timeZone = TimeZone.current
+            dateFormatter.locale = Locale(identifier: "vi")
+            let text = dateFormatter.string(from: date)
+            print("updateLocation \(location)")
+            if let location = location {
+                //get address
+                if preGeocoder == nil {
+                    preGeocoder = CLGeocoder()
+                }
+                preGeocoder?.cancelGeocode()
+                preGeocoder?.reverseGeocodeLocation(location) { [weak self] (clPlacemark: [CLPlacemark]?, error: Error?) in
+                    guard let `self` = self else { return }
+                    if error != nil {
+                        print("reverseGeocodeLocation \(error)")
+                        return
+                    }
+                    if let place = clPlacemark?.first {
+                        print("reverseGeocodeLocation completionHandler")
+                        let name = place.name ?? ""
+                        self.labelOverlay.attributedText = NSAttributedString(string: "\(text)\n\(name)", attributes: Utils.textFontAttributes(self.infOverlay.frame.width))
+                    } else {
+                        print("reverseGeocodeLocation empty")
+                        self.labelOverlay.attributedText = NSAttributedString(string: text, attributes: Utils.textFontAttributes(self.infOverlay.frame.width))
+                    }
+                }
+
+                //get map image
+                preMapSnapshotter?.cancel()
+                let distanceInMeters: Double = 250
+                let options = MKMapSnapshotter.Options()
+                options.region = MKCoordinateRegion(center: location.coordinate, latitudinalMeters: distanceInMeters, longitudinalMeters: distanceInMeters)
+                options.mapType = .standard
+                options.size = CGSize.init(width: 640, height: 640)
+                let bgQueue = DispatchQueue.global(qos: .background)
+                preMapSnapshotter = MKMapSnapshotter(options: options)
+                preMapSnapshotter?.start(with: bgQueue, completionHandler: { [weak self] (snapshot, error) in
+                    guard let `self` = self else { return }
+                    self.preMapSnapshotter = nil
+                    guard error == nil else {
+                        return
+                    }
+                    print("MKMapSnapshotter completionHandler")
+                    if let snapShotImage = snapshot?.image, let coordinatePoint = snapshot?.point(for: location.coordinate) {
+                        UIGraphicsBeginImageContextWithOptions(snapShotImage.size, true, snapShotImage.scale)
+                        snapShotImage.draw(at: CGPoint.zero)
+                        let fixedPinPoint = CGPoint(x: coordinatePoint.x - self.pinImage.size.width / 2, y: coordinatePoint.y - self.pinImage.size.height)
+                        self.pinImage.draw(at: fixedPinPoint)
+                        let mapImage = UIGraphicsGetImageFromCurrentImageContext()
+                        DispatchQueue.main.async {
+                            self.imgOverlay.image = mapImage
+                        }
+                        UIGraphicsEndImageContext()
+                    }
+                })
+            } else {
+                labelOverlay.attributedText = NSAttributedString(string: text, attributes: Utils.textFontAttributes(infOverlay.frame.width))
+            }
+        }
+    }
+    
   func setupPreviewLayer(_ session: AVCaptureSession) {
     guard previewLayer == nil else { return }
 
@@ -122,16 +217,9 @@ class CameraView: UIView, UIGestureRecognizerDelegate {
     
     self.layer.insertSublayer(layer, at: 0)
     layer.frame = self.layer.bounds
-    
     if let enableDateTime = UserDefaults.standard.string(forKey: "enableDateTime"), enableDateTime == "on" {
-        let date = Date()
-        let dateFormatter = DateFormatter()
-        dateFormatter.timeStyle = DateFormatter.Style.short //Set time style
-        dateFormatter.dateStyle = DateFormatter.Style.short //Set date style
-        dateFormatter.timeZone = TimeZone.current
-        dateFormatter.locale = Locale(identifier: "vi")
-        let text = dateFormatter.string(from: date)
-        imgOverlay.image = Utils.textToImage(drawText: text as NSString, inImage: nil, targetSize: imgOverlay.bounds.size)
+        let controller = self.delegate as! CameraController
+        self.updateLocation(controller.locationManager?.latestLocation)
     }
     previewLayer = layer
   }
