@@ -4,11 +4,14 @@ import CoreLocation
 class LocationManager: NSObject, CLLocationManagerDelegate {
   var locationManager = CLLocationManager()
   var latestLocation: CLLocation?
-
-  override init() {
+    var controller: CameraController?
+    
+    init(_ cameraController: CameraController? ) {
     super.init()
+        self.controller = cameraController
     locationManager.delegate = self
     locationManager.desiredAccuracy = kCLLocationAccuracyBest
+    locationManager.distanceFilter = 10
     locationManager.requestWhenInUseAuthorization()
   }
 
@@ -25,6 +28,9 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
   func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
     // Pick the location with best (= smallest value) horizontal accuracy
     latestLocation = locations.sorted { $0.horizontalAccuracy < $1.horizontalAccuracy }.first
+    if let location = latestLocation {
+        self.controller?.didUpdateLocation(location)
+    }
   }
 
   func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
