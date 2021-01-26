@@ -132,33 +132,43 @@ class CameraMan {
 
     connection.videoOrientation = Utils.videoOrientation()
 
-    queue.async {
+    DispatchQueue.global(qos: .userInteractive).async {
+//    queue.async {
       self.stillImageOutput?.captureStillImageAsynchronously(from: connection) {
         buffer, error in
 
         guard error == nil, let buffer = buffer, CMSampleBufferIsValid(buffer),
-          let imageData = AVCaptureStillImageOutput.jpegStillImageNSDataRepresentation(buffer),
-          let tmpimage = UIImage(data: imageData)
-          else {
+          let imageData = AVCaptureStillImageOutput.jpegStillImageNSDataRepresentation(buffer) else {
+            DispatchQueue.main.async {
+              completion(nil)
+            }
+            return
+        }
+        var tmpimage = UIImage(data: imageData)
+        if tmpimage == nil {
             DispatchQueue.main.async {
               completion(nil)
             }
             return
         }
         if let enableDateTime = UserDefaults.standard.string(forKey: "enableDateTime"), enableDateTime == "on" {
-            let date = Date()
-            let dateFormatter = DateFormatter()
-            dateFormatter.timeStyle = DateFormatter.Style.short //Set time style
-            dateFormatter.dateStyle = DateFormatter.Style.short //Set date style
-            dateFormatter.timeZone = TimeZone.current
-            dateFormatter.locale = Locale(identifier: "vi")
-            let text = dateFormatter.string(from: date)
-            if let image = Utils.textToImage(drawText: text as NSString, inImage: tmpimage, targetSize: CGSize.zero) {
-                self.savePhoto(image, location: location, completion: completion)
+            let controller = self.delegate as! CameraController
+            
+            //draw map image
+            var mapImage = controller.cameraView.imgOverlay.image
+            if mapImage != nil && mapImage!.size.width > 0 {
+                let size = tmpimage!.size
+                let mapImageSize = size.width/3
+                tmpimage = tmpimage?.with(image: mapImage?.image(alpha: 0.65)) { parentSize, newImageSize in
+                    return CGRect(x: size.width - mapImageSize, y: 0, width: mapImageSize, height: mapImageSize)
+                }
             }
-        } else {
-            self.savePhoto(tmpimage, location: location, completion: completion)
+            
+            //draw datetime & address
+            let text = controller.cameraView.labelOverlay.text ?? ""
+            tmpimage = Utils.textToImage(drawText: text as NSString, inImage: tmpimage, targetSize: CGSize.zero)
         }
+        self.savePhoto(tmpimage!, location: location, completion: completion)
       }
     }
   }
@@ -166,7 +176,7 @@ class CameraMan {
   func savePhoto(_ image: UIImage, location: CLLocation?, completion: @escaping ((PHAsset?) -> Void)) {
     var localIdentifier: String?
 
-    savingQueue.async {
+    DispatchQueue.main.async {
       do {
         try PHPhotoLibrary.shared().performChangesAndWait {
           let request = PHAssetChangeRequest.creationRequestForAsset(from: image)
@@ -246,4 +256,35 @@ class CameraMan {
       .low
     ]
   }
+}
+
+extension UIImage {
+    typealias RectCalculationClosure = (_ parentSize: CGSize, _ newImageSize: CGSize)->(CGRect)
+
+    func with(image named: String, rectCalculation: RectCalculationClosure) -> UIImage {
+        return with(image: UIImage(named: named), rectCalculation: rectCalculation)
+    }
+
+    func with(image: UIImage?, rectCalculation: RectCalculationClosure) -> UIImage {
+
+        if let image = image {
+            UIGraphicsBeginImageContext(size)
+
+            draw(in: CGRect(origin: .zero, size: size))
+            image.draw(in: rectCalculation(size, image.size))
+
+            let newImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+            return newImage!
+        }
+        return self
+    }
+
+    func image(alpha: CGFloat) -> UIImage? {
+        UIGraphicsBeginImageContextWithOptions(size, false, scale)
+        draw(at: .zero, blendMode: .normal, alpha: alpha)
+        let newImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return newImage
+    }
 }
