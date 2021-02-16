@@ -23,6 +23,7 @@ class CameraView: UIView, UIGestureRecognizerDelegate {
   lazy var shutterOverlayView: UIView = self.makeShutterOverlayView()
   lazy var blurView: UIVisualEffectView = self.makeBlurView()
       
+    var infoSwitch: UISwitch = UISwitch()
     var imgOverlay: UIImageView = UIImageView()
     var infOverlay: UIView = UIView()
     var labelOverlay: UILabel = UILabel()
@@ -49,35 +50,19 @@ class CameraView: UIView, UIGestureRecognizerDelegate {
 
   // MARK: - Setup
 
+    @objc func showInfo(_ sender: UISwitch? = nil) {
+        infOverlay.isHidden = !(infoSwitch.isOn)
+        if sender != nil {
+            UserDefaults.standard.set(infoSwitch.isOn ? "on" : "off" , forKey: "enableDateTime")
+            if (infOverlay.isHidden == false) {
+                let controller = self.delegate as! CameraController
+                self.updateLocation(controller.locationManager?.latestLocation)
+            }
+        }
+    }
+    
   func setup() {
     addGestureRecognizer(tapGR)
-
-    if let enableDateTime = UserDefaults.standard.string(forKey: "enableDateTime"), enableDateTime == "on" {
-        insertSubview(infOverlay, at: 0)
-        infOverlay.frame = self.frame
-        infOverlay.autoresizingMask = [.flexibleHeight, .flexibleWidth]
-        infOverlay.backgroundColor = .clear
-        
-        infOverlay.addSubview(imgOverlay)
-        imgOverlay.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            imgOverlay.topAnchor.constraint(equalTo: infOverlay.topAnchor),
-            imgOverlay.trailingAnchor.constraint(equalTo: infOverlay.trailingAnchor),
-            imgOverlay.widthAnchor.constraint(equalTo: infOverlay.widthAnchor, multiplier: 1/3),
-            imgOverlay.heightAnchor.constraint(equalTo: infOverlay.widthAnchor, multiplier: 1/3),
-        ])
-        imgOverlay.alpha = 0.65
-        
-        infOverlay.addSubview(labelOverlay)
-        labelOverlay.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            labelOverlay.topAnchor.constraint(equalTo: infOverlay.topAnchor),
-            labelOverlay.leadingAnchor.constraint(equalTo: infOverlay.leadingAnchor),
-            labelOverlay.widthAnchor.constraint(equalTo: infOverlay.widthAnchor, multiplier: 0.7),
-        ])
-        labelOverlay.numberOfLines = 0
-        labelOverlay.textAlignment = .left
-    }
 
     [closeButton, flashButton, rotateButton, bottomContainer].forEach {
       addSubview($0)
@@ -139,6 +124,52 @@ class CameraView: UIView, UIGestureRecognizerDelegate {
     rotateOverlayView.g_pinEdges()
     blurView.g_pinEdges()
     shutterOverlayView.g_pinEdges()
+    
+    if let enableDateTime = UserDefaults.standard.string(forKey: "enableDateTime"), enableDateTime.count > 0 {
+        insertSubview(infOverlay, at: 0)
+        infOverlay.frame = self.frame
+        infOverlay.autoresizingMask = [.flexibleHeight, .flexibleWidth]
+        infOverlay.backgroundColor = .clear
+        
+        infOverlay.addSubview(imgOverlay)
+        imgOverlay.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            imgOverlay.topAnchor.constraint(equalTo: infOverlay.topAnchor),
+            imgOverlay.trailingAnchor.constraint(equalTo: infOverlay.trailingAnchor),
+            imgOverlay.widthAnchor.constraint(equalTo: infOverlay.widthAnchor, multiplier: 1/3),
+            imgOverlay.heightAnchor.constraint(equalTo: infOverlay.widthAnchor, multiplier: 1/3),
+        ])
+        imgOverlay.alpha = 0.65
+        
+        infOverlay.addSubview(labelOverlay)
+        labelOverlay.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            labelOverlay.topAnchor.constraint(equalTo: infOverlay.topAnchor),
+            labelOverlay.leadingAnchor.constraint(equalTo: infOverlay.leadingAnchor),
+            labelOverlay.widthAnchor.constraint(equalTo: infOverlay.widthAnchor, multiplier: 0.7),
+        ])
+        labelOverlay.numberOfLines = 0
+        labelOverlay.textAlignment = .left
+        
+        self.addSubview(self.infoSwitch)
+        infoSwitch.isOn = enableDateTime == "on"
+        infoSwitch.g_pin(size: CGSize(width: 51, height: 31))
+        infoSwitch.addTarget(self, action: #selector(self.showInfo(_:)), for: UIControl.Event.valueChanged)
+        if #available(iOS 11.0, *) {
+            Constraint.on(
+                infoSwitch.topAnchor.constraint(equalTo: rotateButton.bottomAnchor, constant: 10),
+                infoSwitch.rightAnchor.constraint(equalTo: self.safeAreaLayoutGuide.rightAnchor, constant: -10)
+            )
+        } else {
+            Constraint.on(
+                infoSwitch.topAnchor.constraint(equalTo: rotateButton.bottomAnchor, constant: 10),
+                infoSwitch.rightAnchor.constraint(equalTo: self.rightAnchor, constant: -10)
+            )
+        }
+
+        self.showInfo()
+    }
+
   }
 
     func updateLocation(_ location : CLLocation?) {
